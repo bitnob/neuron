@@ -22,8 +22,8 @@ func NewFastServer(handler fasthttp.RequestHandler, logger *logger.Logger) *Fast
 	server := &fasthttp.Server{
 		Handler:                       handler,
 		Name:                          "Neuron",
-		ReadTimeout:                   5 * time.Second,
-		WriteTimeout:                  10 * time.Second,
+		ReadTimeout:                   30 * time.Second,
+		WriteTimeout:                  30 * time.Second,
 		IdleTimeout:                   120 * time.Second,
 		MaxRequestBodySize:            1024 * 1024 * 10, // 10MB
 		DisableHeaderNamesNormalizing: true,
@@ -31,7 +31,14 @@ func NewFastServer(handler fasthttp.RequestHandler, logger *logger.Logger) *Fast
 		NoDefaultContentType:          true,
 		NoDefaultDate:                 true,
 		ReduceMemoryUsage:             true,
-		Concurrency:                   runtime.NumCPU() * 1000,
+		Concurrency:                   runtime.NumCPU() * 10000,
+		MaxConnsPerIP:                 50000,
+		TCPKeepalive:                  true,
+		TCPKeepalivePeriod:            30 * time.Second,
+		GetOnly:                       true, // Optimize for GET requests
+		DisableKeepalive:              false,
+		StreamRequestBody:             true,
+		DisablePreParseMultipartForm:  true,
 	}
 
 	return &FastServer{
