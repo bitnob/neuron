@@ -58,6 +58,7 @@ func New(config *EngineConfig) *Engine {
 	return &Engine{
 		config:   config,
 		modules:  NewModuleRegistry(),
+		router:   router.New(),
 		shutdown: make(chan struct{}),
 	}
 }
@@ -184,8 +185,10 @@ func (e *Engine) Start() error {
 		e.pool = NewWorkerPool(e.config.WorkerPoolSize)
 	}
 
-	// Initialize router
-	e.router = router.New()
+	// Ensure router exists
+	if e.router == nil {
+		e.router = router.New()
+	}
 
 	// Initialize modules
 	ctx := context.Background()
@@ -402,4 +405,12 @@ func (e *Engine) Use(middleware ...router.MiddlewareFunc) {
 // Group creates a new route group
 func (e *Engine) Group(prefix string, middleware ...router.MiddlewareFunc) *router.RouteGroup {
 	return e.router.Group(prefix, middleware...)
+}
+
+// Router returns the underlying router instance
+func (e *Engine) Router() *router.Router {
+	if e.router == nil {
+		e.router = router.New()
+	}
+	return e.router
 }

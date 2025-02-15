@@ -41,9 +41,13 @@ func main() {
 
 	app := neuron.New(config)
 
+	// Get the underlying router
+	r := app.Router()
+
 	// Add middleware
 	app.Use(middleware.NewLoggingMiddleware(middleware.LogConfig{
-		Logger: &loggerAdapter{Logger: log.Default()},
+		Logger:        &loggerAdapter{Logger: log.Default()},
+		SlowThreshold: 5 * time.Millisecond, // Only log as slow if request takes longer than 5ms
 	}))
 	app.Use(middleware.Recover())
 	app.Use(middleware.CORS())
@@ -57,7 +61,7 @@ func main() {
 	}))
 
 	// Add routes
-	app.GET("/", func(c *router.Context) error {
+	r.GET("/", func(c *router.Context) error {
 		return c.JSON(200, map[string]string{
 			"message": "Welcome to Neuron!",
 		})

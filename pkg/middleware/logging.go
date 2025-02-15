@@ -72,7 +72,7 @@ func logRequest(r *http.Request, config LogConfig) {
 func logResponse(recorder *responseRecorder, duration time.Duration, err error, config LogConfig) {
 	fields := []interface{}{
 		"status", recorder.Status(),
-		"duration", duration,
+		"duration", duration.String(),
 	}
 
 	if err != nil {
