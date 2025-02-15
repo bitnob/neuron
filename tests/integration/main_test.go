@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"your/framework/pkg/cache"
-	"your/framework/pkg/config"
-	"your/framework/pkg/database"
+	"neuron/pkg/cache"
+	"neuron/pkg/config"
+	"neuron/pkg/database"
 )
 
 type IntegrationSuite struct {
