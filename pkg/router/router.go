@@ -114,7 +114,6 @@ type Context struct {
 	Response http.ResponseWriter
 	Params   []Param
 	store    map[string]interface{}
-	mu       sync.RWMutex
 }
 
 // Reset resets the context for reuse
