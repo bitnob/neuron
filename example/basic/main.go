@@ -34,6 +34,10 @@ func (l *loggerAdapter) Warn(msg string, fields ...interface{}) {
 }
 
 func main() {
+	// Wait for interrupt signal
+	listenForShutdown := make(chan os.Signal, 1)
+	signal.Notify(listenForShutdown, syscall.SIGINT, syscall.SIGTERM)
+
 	// Create a new Neuron engine with default configuration
 	config := neuron.DefaultConfig()
 	config.Host = "0.0.0.0" // Listen on all interfaces
@@ -72,10 +76,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	// block here until interrupt
+	<-listenForShutdown
 
 	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
