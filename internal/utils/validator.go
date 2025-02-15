@@ -5,6 +5,8 @@ import (
 	"regexp"
 )
 
+// todo: go-playground/govalidator is unbeatable
+
 // Validator provides validation utilities
 type Validator struct {
 	errors map[string]string

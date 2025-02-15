@@ -15,6 +15,8 @@ type Metrics struct {
 }
 
 func (m *Metrics) TrackRequest(duration time.Duration) {
+	// todo: atomic will lose state on restarts, great for syncing across
+	// goroutines, prometheus >>>>>>>>
 	atomic.AddUint64(&m.RequestCount, 1)
 	atomic.AddUint64(&m.ResponseTime, uint64(duration))
 }

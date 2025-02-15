@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// todo: we can import k6 as a library since it's written in Go
+
 type Results struct {
 	RequestCount   int64
 	ResponseTimes  []time.Duration
