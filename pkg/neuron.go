@@ -1,7 +1,10 @@
+package neuron
+
 import (
 	"context"
 	"runtime"
 	"sync"
+	"time"
 )
 
 // EngineConfig holds the configuration for the Neuron engine
@@ -37,6 +40,15 @@ type Engine struct {
 	wg       sync.WaitGroup
 }
 
+// New creates a new Neuron engine instance with the provided configuration
+func New(config *EngineConfig) *Engine {
+	return &Engine{
+		config:   config,
+		modules:  NewModuleRegistry(),
+		shutdown: make(chan struct{}),
+	}
+}
+
 // ModuleRegistry manages framework modules
 type ModuleRegistry struct {
 	modules map[string]Module
@@ -57,23 +69,50 @@ type WorkerPool struct {
 	size    int
 }
 
-// Performance optimizations
-func (e *Engine) optimize() {
-	// Set GOMAXPROCS
+// Worker represents a worker in the pool
+type Worker struct {
+	id     int
+	engine *Engine
+}
+
+// Job represents a unit of work
+type Job struct {
+	Handler func() error
+}
+
+// Cache interface for the caching system
+type Cache interface {
+	Get(key string) (interface{}, error)
+	Set(key string, value interface{}, ttl time.Duration) error
+	Delete(key string) error
+}
+
+// MetricsCollector for monitoring and metrics
+type MetricsCollector struct {
+	// Add metrics fields
+}
+
+// Start initializes and starts the Neuron engine
+func (e *Engine) Start() error {
+	// Set GOMAXPROCS if configured
 	if e.config.MaxProcs > 0 {
 		runtime.GOMAXPROCS(e.config.MaxProcs)
 	}
 
 	// Initialize worker pool
-	e.pool = NewWorkerPool(e.config.WorkerPoolSize, e.config.QueueSize)
-
-	// Enable compression
-	if e.config.EnableCompression {
-		e.Use(middleware.Compression())
+	if e.config.WorkerPoolSize > 0 {
+		// Initialize worker pool
 	}
 
-	// Initialize cache
-	if e.config.CacheEnabled {
-		e.cache = NewCache(e.config.CacheSize)
-	}
+	// Initialize modules
+	// Start HTTP server
+	// Start metrics collector
+	return nil
+}
+
+// Shutdown gracefully shuts down the engine
+func (e *Engine) Shutdown(ctx context.Context) error {
+	close(e.shutdown)
+	e.wg.Wait()
+	return nil
 }

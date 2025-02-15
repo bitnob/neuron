@@ -1,0 +1,29 @@
+app:
+  name: "neuron-dev"
+  environment: "development"
+  debug: true
+  timezone: "UTC"
+
+server:
+  host: "localhost"
+  port: 8080
+  readTimeout: 10
+  writeTimeout: 10
+  maxHeaderBytes: 1048576
+  gracefulTimeout: 30
+
+database:
+  driver: "postgres"
+  host: "localhost"
+  port: 5432
+  name: "neuron_dev"
+  user: "postgres"
+  password: "postgres"
+  maxConnections: 100
+  maxIdleConns: 10
+  connMaxLifetime: 3600
+
+cache:
+  driver: "memory"
+  maxEntries: 1000
+  defaultTTL: 300 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v8"
+	"github.com/go-redis/redis/v8"
 )
 
 type RedisCache struct {
