@@ -158,3 +158,18 @@ func (l *Logger) Access(method, path string, status int, latency time.Duration, 
 		ip,
 	)
 }
+
+// Add new method for fasthttp logging
+func (l *Logger) AccessFastHTTP(method, path []byte, status int, latency time.Duration, size int64, ip string) {
+	statusColor := getStatusColor(status)
+	l.accessLog.Printf("%s %s %s%d%s %v %d bytes [%s]",
+		string(method),
+		string(path),
+		statusColor,
+		status,
+		"\033[0m",
+		latency,
+		size,
+		ip,
+	)
+}

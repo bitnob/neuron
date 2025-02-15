@@ -13,6 +13,27 @@ import (
 	"golang.org/x/net/http2"
 )
 
+// responseWriter wraps http.ResponseWriter to capture status and size
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+	size   int64
+}
+
+func (rw *responseWriter) WriteHeader(status int) {
+	rw.status = status
+	rw.ResponseWriter.WriteHeader(status)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	if rw.status == 0 {
+		rw.status = http.StatusOK
+	}
+	size, err := rw.ResponseWriter.Write(b)
+	rw.size += int64(size)
+	return size, err
+}
+
 func NewServer(handler http.Handler, logger *logger.Logger) (*http.Server, net.Listener) {
 	// Set GOMAXPROCS to match CPU cores
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -43,13 +64,35 @@ func NewServer(handler http.Handler, logger *logger.Logger) (*http.Server, net.L
 		MinVersion: tls.VersionTLS12,
 	}
 
-	// Wrap handler with logger middleware
-	wrappedHandler := logger.Middleware(handler)
+	// Wrap handler with logging middleware
+	loggingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Log incoming request
+		logger.Info("Incoming request: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+
+		// Create response wrapper to capture status
+		rw := &responseWriter{ResponseWriter: w}
+
+		// Process request
+		handler.ServeHTTP(rw, r)
+
+		// Log completion
+		duration := time.Since(start)
+		logger.Access(
+			r.Method,
+			r.URL.Path,
+			rw.status,
+			duration,
+			rw.size,
+			r.RemoteAddr,
+		)
+	})
 
 	// Create optimized server
 	server := &http.Server{
 		Addr:              ":8080",
-		Handler:           wrappedHandler,
+		Handler:           loggingHandler,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
