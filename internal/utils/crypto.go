@@ -12,24 +12,39 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Crypto provides cryptographic utilities
+// Package utils provides utility functions for cryptographic operations,
+// validation, and general helpers.
+
+// Crypto provides cryptographic utilities for hashing, encryption,
+// and password management.
 type Crypto struct {
 	key []byte
 }
 
-// NewCrypto creates a new crypto utility instance
+// NewCrypto creates a new crypto utility instance with the provided key.
+// The key is used for encryption operations.
 func NewCrypto(key []byte) *Crypto {
 	return &Crypto{key: key}
 }
 
-// Hash generates a hash of the input using SHA-256
+// Hash generates a SHA-256 hash of the input string and returns it as a
+// hexadecimal string.
 func (c *Crypto) Hash(input string) string {
 	hash := sha256.New()
 	hash.Write([]byte(input))
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-// HashPassword hashes a password using bcrypt
+// HashPassword hashes a password using bcrypt with the default cost.
+// Returns the hashed password as a string or an error if hashing fails.
+//
+// Example:
+//
+//	crypto := NewCrypto([]byte("your-key"))
+//	hashedPassword, err := crypto.HashPassword("user-password")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func (c *Crypto) HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

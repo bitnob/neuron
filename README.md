@@ -33,3 +33,14 @@ Neuron is a cutting-edge web framework designed to empower developers to build h
 Neuron is not just another web framework—it's a powerful tool designed for developers who need to push the boundaries of performance and scalability. Whether you're building the next-generation SaaS platform, a real-time analytics engine, or a high-frequency trading system, Neuron provides the foundation you need to succeed.
 
 Join the Neuron community and experience the future of high-performance web development. Build faster, scale smarter, and deliver exceptional applications with Neuron.
+
+
+## Features
+
+- 🚀 High Performance
+- 🔒 Built-in Security
+- 💾 Database Support
+- 🔄 Caching System
+- ⚡ Middleware Support
+
+## Quick Start
