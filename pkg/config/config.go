@@ -56,6 +56,30 @@ type CacheConfig struct {
 	DefaultTTL int    `json:"defaultTTL" yaml:"defaultTTL"`
 }
 
+// SecurityConfig holds security-related configuration
+type SecurityConfig struct {
+	CSRF           bool     `json:"csrf" yaml:"csrf"`
+	SecretKey      string   `json:"secretKey" yaml:"secretKey"`
+	AllowedOrigins []string `json:"allowedOrigins" yaml:"allowedOrigins"`
+	TrustedProxies []string `json:"trustedProxies" yaml:"trustedProxies"`
+	SSLRedirect    bool     `json:"sslRedirect" yaml:"sslRedirect"`
+	SecureHeaders  bool     `json:"secureHeaders" yaml:"secureHeaders"`
+}
+
+// MiddlewareConfig holds middleware configuration
+type MiddlewareConfig struct {
+	EnableLogging bool `json:"enableLogging" yaml:"enableLogging"`
+	EnableCORS    bool `json:"enableCORS" yaml:"enableCORS"`
+	EnableCache   bool `json:"enableCache" yaml:"enableCache"`
+}
+
+// LoggerConfig holds logging configuration
+type LoggerConfig struct {
+	Level  string `json:"level" yaml:"level"`
+	Format string `json:"format" yaml:"format"`
+	Output string `json:"output" yaml:"output"`
+}
+
 // ConfigManager handles configuration loading and access
 type ConfigManager struct {
 	config *Config

@@ -3,7 +3,22 @@ package query
 import (
 	"context"
 	"database/sql"
+	"time"
 )
+
+// Cache interface for query caching
+type Cache interface {
+	Get(ctx context.Context, key string) (interface{}, error)
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+}
+
+// Query represents a database query with caching options
+type Query struct {
+	SQL      string
+	Args     []interface{}
+	CacheKey string
+	CacheTTL time.Duration
+}
 
 type Executor struct {
 	db    *sql.DB

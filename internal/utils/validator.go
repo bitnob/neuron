@@ -93,3 +93,7 @@ func isValidEmail(email string) bool {
 	regex := regexp.MustCompile(pattern)
 	return regex.MatchString(email)
 }
+
+func isMinLength(value string, min int) bool {
+	return len(value) >= min
+}

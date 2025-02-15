@@ -38,7 +38,9 @@ func (j *JWTManager) GenerateToken(claims Claims) (string, error) {
 	claims.IssuedAt = now.Unix()
 	claims.ExpiresAt = now.Add(j.config.ExpirationTime).Unix()
 	claims.Issuer = j.config.Issuer
-	claims.Audience = j.config.Audience
+	if len(j.config.Audience) > 0 {
+		claims.Audience = j.config.Audience[0]
+	}
 
 	token := jwt.NewWithClaims(j.config.SigningMethod, claims)
 	return token.SignedString(j.config.SigningKey)

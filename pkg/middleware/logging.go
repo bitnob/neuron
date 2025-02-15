@@ -1,9 +1,18 @@
 package middleware
 
 import (
+	"net/http"
 	"strings"
 	"time"
 )
+
+// Logger interface for middleware logging
+type Logger interface {
+	Info(msg string, fields ...interface{})
+	Error(msg string, fields ...interface{})
+	Debug(msg string, fields ...interface{})
+	Warn(msg string, fields ...interface{})
+}
 
 type LogConfig struct {
 	Logger        Logger
@@ -30,8 +39,8 @@ func NewLoggingMiddleware(config LogConfig) MiddlewareFunc {
 			logRequest(c.Request, config)
 
 			// Create response recorder
-			recorder := newResponseRecorder(c.Response())
-			c.Response().Writer = recorder
+			recorder := newResponseRecorder(c.Response)
+			c.Response = recorder
 
 			err := next(c)
 
@@ -44,4 +53,38 @@ func NewLoggingMiddleware(config LogConfig) MiddlewareFunc {
 			return err
 		}
 	}
+}
+
+func logRequest(r *http.Request, config LogConfig) {
+	fields := []interface{}{
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr,
+	}
+
+	if config.LogHeaders {
+		fields = append(fields, "headers", r.Header)
+	}
+
+	config.Logger.Info("Request", fields...)
+}
+
+func logResponse(recorder *responseRecorder, duration time.Duration, err error, config LogConfig) {
+	fields := []interface{}{
+		"status", recorder.Status(),
+		"duration", duration,
+	}
+
+	if err != nil {
+		fields = append(fields, "error", err.Error())
+		config.Logger.Error("Response", fields...)
+		return
+	}
+
+	if duration > config.SlowThreshold {
+		config.Logger.Warn("Slow Response", fields...)
+		return
+	}
+
+	config.Logger.Info("Response", fields...)
 }

@@ -22,7 +22,7 @@ type node struct {
 func (r *Router) buildRadixTree() *node {
 	root := &node{path: "/"}
 
-	for method, routes := range r.routes {
+	for _, routes := range r.routes {
 		for _, route := range routes {
 			segments := strings.Split(strings.Trim(route.Path, "/"), "/")
 			current := root

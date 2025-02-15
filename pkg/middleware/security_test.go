@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"neuron/pkg/router"
 	"testing"
 )
 
@@ -46,7 +47,7 @@ func TestSecurityMiddleware(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
-			c := NewContext(req, rec)
+			c := router.NewContext(req, rec)
 
 			err := handler(c)
 			if err != nil {

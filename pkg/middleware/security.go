@@ -1,6 +1,9 @@
 package middleware
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Package middleware provides a collection of middleware components for web applications.
 
@@ -54,18 +57,28 @@ func NewSecurityMiddleware(config SecurityConfig) MiddlewareFunc {
 				if config.HSTSIncludeSubdomains {
 					value += "; includeSubDomains"
 				}
-				c.Response().Header().Set("Strict-Transport-Security", value)
+				c.Response.Header().Set("Strict-Transport-Security", value)
 			}
 
-			c.Response().Header().Set("X-Frame-Options", config.FrameOptions)
-			c.Response().Header().Set("X-Content-Type-Options", config.ContentTypeOptions)
-			c.Response().Header().Set("X-XSS-Protection", config.XSSProtection)
+			c.Response.Header().Set("X-Frame-Options", config.FrameOptions)
+			c.Response.Header().Set("X-Content-Type-Options", config.ContentTypeOptions)
+			c.Response.Header().Set("X-XSS-Protection", config.XSSProtection)
 
 			if len(config.CSPDirectives) > 0 {
-				c.Response().Header().Set("Content-Security-Policy", buildCSPHeader(config.CSPDirectives))
+				c.Response.Header().Set("Content-Security-Policy", buildCSPHeader(config.CSPDirectives))
 			}
 
 			return next(c)
 		}
 	}
+}
+
+func buildCSPHeader(directives map[string][]string) string {
+	var policies []string
+	for directive, sources := range directives {
+		if len(sources) > 0 {
+			policies = append(policies, fmt.Sprintf("%s %s", directive, strings.Join(sources, " ")))
+		}
+	}
+	return strings.Join(policies, "; ")
 }

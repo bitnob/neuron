@@ -31,7 +31,7 @@ func NewRateMiddleware(config RateConfig) MiddlewareFunc {
 		return func(c *Context) error {
 			key := config.KeyFunc(c)
 			if !limiter.Allow(key) {
-				return c.Status(http.StatusTooManyRequests).JSON(Error{
+				return c.JSON(http.StatusTooManyRequests, Error{
 					Code:    "RATE_LIMIT_EXCEEDED",
 					Message: "Too many requests",
 				})
@@ -39,4 +39,18 @@ func NewRateMiddleware(config RateConfig) MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+// Allow checks if a request is allowed based on the rate limit
+func (l *RateLimiter) Allow(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	b, exists := l.limiters[key]
+	if !exists {
+		b = rate.NewLimiter(l.config.Limit, l.config.Burst)
+		l.limiters[key] = b
+	}
+
+	return b.Allow()
 }

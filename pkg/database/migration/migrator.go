@@ -24,6 +24,23 @@ type Migrator struct {
 	lockTimeout time.Duration
 }
 
+// MigratorOption is a function that configures a Migrator
+type MigratorOption func(*Migrator)
+
+// WithTableName sets the migrations table name
+func WithTableName(name string) MigratorOption {
+	return func(m *Migrator) {
+		m.tableName = name
+	}
+}
+
+// WithSchemaName sets the schema name
+func WithSchemaName(name string) MigratorOption {
+	return func(m *Migrator) {
+		m.schemaName = name
+	}
+}
+
 func NewMigrator(db *sql.DB, options ...MigratorOption) *Migrator {
 	m := &Migrator{
 		db:          db,
@@ -59,4 +76,26 @@ func (m *Migrator) Up(ctx context.Context) error {
 
 func (m *Migrator) Down(ctx context.Context) error {
 	return m.runMigrations(ctx, false)
+}
+
+func (m *Migrator) runMigrations(ctx context.Context, up bool) error {
+	tx, err := m.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, migration := range m.migrations {
+		if up {
+			if err := migration.Up(tx); err != nil {
+				return fmt.Errorf("failed to run up migration %s: %w", migration.Name, err)
+			}
+		} else {
+			if err := migration.Down(tx); err != nil {
+				return fmt.Errorf("failed to run down migration %s: %w", migration.Name, err)
+			}
+		}
+	}
+
+	return tx.Commit()
 }

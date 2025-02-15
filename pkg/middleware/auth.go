@@ -3,8 +3,22 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"neuron/pkg/router"
 	"strings"
 )
+
+// Use router types instead of local types
+type (
+	HandlerFunc    = router.HandlerFunc
+	MiddlewareFunc = router.MiddlewareFunc
+	Context        = router.Context
+)
+
+// Add Error struct
+type Error struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
 
 type AuthConfig struct {
 	TokenType      string
@@ -13,6 +27,24 @@ type AuthConfig struct {
 	ContextKey     string
 	SkipPaths      []string
 	TokenValidator func(string) (interface{}, error)
+}
+
+func extractToken(r *http.Request, config AuthConfig) string {
+	// Check header
+	if config.HeaderName != "" {
+		if token := r.Header.Get(config.HeaderName); token != "" {
+			return strings.TrimPrefix(token, config.TokenType+" ")
+		}
+	}
+
+	// Check query parameter
+	if config.QueryParam != "" {
+		if token := r.URL.Query().Get(config.QueryParam); token != "" {
+			return token
+		}
+	}
+
+	return ""
 }
 
 func NewAuthMiddleware(config AuthConfig) MiddlewareFunc {
@@ -27,7 +59,7 @@ func NewAuthMiddleware(config AuthConfig) MiddlewareFunc {
 
 			token := extractToken(c.Request, config)
 			if token == "" {
-				return c.Status(http.StatusUnauthorized).JSON(Error{
+				return c.JSON(http.StatusUnauthorized, Error{
 					Code:    "UNAUTHORIZED",
 					Message: "Authentication required",
 				})
@@ -36,7 +68,7 @@ func NewAuthMiddleware(config AuthConfig) MiddlewareFunc {
 			// Validate token
 			claims, err := config.TokenValidator(token)
 			if err != nil {
-				return c.Status(http.StatusUnauthorized).JSON(Error{
+				return c.JSON(http.StatusUnauthorized, Error{
 					Code:    "INVALID_TOKEN",
 					Message: "Invalid authentication token",
 				})

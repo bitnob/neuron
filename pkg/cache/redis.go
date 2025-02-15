@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -62,4 +63,31 @@ func (c *RedisCache) Set(ctx context.Context, key string, value interface{}, ttl
 	}
 
 	return nil
+}
+
+func (c *RedisCache) prefixKey(key string) string {
+	if c.options.Prefix != "" {
+		return c.options.Prefix + ":" + key
+	}
+	return key
+}
+
+func (c *RedisCache) serialize(value interface{}) ([]byte, error) {
+	if c.options.SerializeFunc != nil {
+		return c.options.SerializeFunc(value)
+	}
+	return json.Marshal(value)
+}
+
+func (c *RedisCache) deserialize(data []byte, value interface{}) error {
+	if c.options.DeserializeFunc != nil {
+		v, err := c.options.DeserializeFunc(data)
+		if err != nil {
+			return err
+		}
+		// Copy deserialized value to the provided pointer
+		*(value.(*interface{})) = v
+		return nil
+	}
+	return json.Unmarshal(data, value)
 }

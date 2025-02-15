@@ -3,6 +3,7 @@ package security
 import (
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 type XSSConfig struct {
@@ -47,4 +48,29 @@ func (x *XSSProtector) ApplyHeaders(w http.ResponseWriter) {
 	if x.config.EnableXSSProtection {
 		w.Header().Set("X-XSS-Protection", x.config.XSSProtection)
 	}
+}
+
+func compileXSSPatterns() []*regexp.Regexp {
+	patterns := []string{
+		`<script[^>]*>.*?</script>`,
+		`javascript:.*`,
+		`onload=.*`,
+		`onerror=.*`,
+	}
+
+	compiled := make([]*regexp.Regexp, len(patterns))
+	for i, p := range patterns {
+		compiled[i] = regexp.MustCompile(p)
+	}
+	return compiled
+}
+
+func (x *XSSProtector) buildCSPHeader() string {
+	var policies []string
+	for directive, sources := range x.config.CSPDirectives {
+		if len(sources) > 0 {
+			policies = append(policies, directive+" "+strings.Join(sources, " "))
+		}
+	}
+	return strings.Join(policies, "; ")
 }

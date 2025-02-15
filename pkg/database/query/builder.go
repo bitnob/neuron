@@ -1,5 +1,24 @@
 package query
 
+// Condition represents a WHERE clause condition
+type Condition struct {
+	SQL  string
+	Args []interface{}
+}
+
+// Join represents a table join
+type Join struct {
+	Type      string
+	Table     string
+	Condition string
+}
+
+// Order represents an ORDER BY clause
+type Order struct {
+	Column string
+	Dir    string // "ASC" or "DESC"
+}
+
 type Builder struct {
 	table      string
 	selections []string

@@ -3,7 +3,11 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 )
+
+// ErrTxDone is returned when committing or rolling back a transaction that has already been committed or rolled back
+var ErrTxDone = errors.New("transaction already done")
 
 type Transaction struct {
 	tx   *sql.Tx
