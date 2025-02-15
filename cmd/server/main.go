@@ -25,7 +25,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Create router
+	// todo: fasthttp is more trouble than it's worth, honestly
+	// net/http is plenty fast and well optimized
 	r := router.NewFastRouter()
 
 	// Configure routes
@@ -36,12 +37,18 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
+		// todo: this fatal here will only kill the goroutine and not propagate
+		// to the main routine which means the server will be alive but not be
+		// able to receive any http requests. ideally we want to capture this
+		// error here and use a channel to send it back to the main routine
 		if err := srv.ListenAndServe(":8080"); err != nil {
 			log.Printf("Server error: %v", err)
 		}
 	}()
 
-	// Wait for interrupt signal
+	// now we can use a select {} here to listen for both the error channel and
+	// context.Done(), that way which ever one happens first will trigger the
+	// shutdown happy path
 	<-ctx.Done()
 
 	// Shutdown server gracefully

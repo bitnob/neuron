@@ -36,6 +36,11 @@ func (l *loggerAdapter) Warn(msg string, fields ...interface{}) {
 func main() {
 	// Wait for interrupt signal
 	listenForShutdown := make(chan os.Signal, 1)
+
+	// todo: we probably want to make this a context with signal.NotifyContext()
+	// so we can pass it to neuron.New() or something. That way we can listen
+	// for context.Done() as our cancellation request from a failing service
+	// deep within our app and kill the application in a graceful manner
 	signal.Notify(listenForShutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	// Create a new Neuron engine with default configuration
@@ -76,7 +81,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// block here until interrupt
+	// this becomes superfluous as we need to use select {} on the interrupt
+	// signal and app.Start() error at the same time. So using the
+	// signal.NotifyContext() feels more appropriate
 	<-listenForShutdown
 
 	// Graceful shutdown
