@@ -1,19 +1,28 @@
 package router
 
 import (
-	"encoding/json"
 	"net/http"
+
+	jsoniter "github.com/json-iterator/go"
 )
+
+// func (c *Context) JSON(code int, data interface{}) error {
+// 	c.Response.Header().Set("Content-Type", "application/json")
+// 	c.Response.WriteHeader(code)
+// 	return json.NewEncoder(c.Response).Encode(data)
+// }
+
+func (c *Context) JSON(code int, v interface{}) error {
+	c.Response.Header().Set("Content-Type", "application/json")
+	c.Response.WriteHeader(code)
+
+	// Use jsoniter for faster JSON serialization
+	return jsoniter.NewEncoder(c.Response).Encode(v)
+}
 
 func (c *Context) Status(code int) *Context {
 	c.Response.WriteHeader(code)
 	return c
-}
-
-func (c *Context) JSON(code int, data interface{}) error {
-	c.Response.Header().Set("Content-Type", "application/json")
-	c.Response.WriteHeader(code)
-	return json.NewEncoder(c.Response).Encode(data)
 }
 
 func (c *Context) Blob(code int, contentType string, data []byte) error {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"neuron/pkg/router"
 	"runtime"
 	"sync"
@@ -42,15 +43,17 @@ type EngineConfig struct {
 
 // Engine is the core of the Neuron framework
 type Engine struct {
-	config   *EngineConfig
-	modules  *ModuleRegistry
-	router   *router.Router
-	pool     *WorkerPool
-	cache    Cache
-	metrics  *MetricsCollector
-	shutdown chan struct{}
-	wg       sync.WaitGroup
-	server   *http.Server
+	config       *EngineConfig
+	modules      *ModuleRegistry
+	router       *router.Router
+	pool         *WorkerPool
+	cache        Cache
+	metrics      *MetricsCollector
+	shutdown     chan struct{}
+	wg           sync.WaitGroup
+	server       *http.Server
+	requestQueue chan *http.Request
+	workerPool   *WorkerPool
 }
 
 // New creates a new Neuron engine instance with the provided configuration
@@ -189,6 +192,9 @@ func (e *Engine) Start() error {
 	if e.router == nil {
 		e.router = router.New()
 	}
+
+	// Enable profiling endpoints
+	e.enableProfiling()
 
 	// Initialize modules
 	ctx := context.Background()
@@ -359,6 +365,17 @@ func DefaultConfig() *EngineConfig {
 
 // ServeHTTP implements the http.Handler interface
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Queue request or handle directly based on load
+	if e.requestQueue != nil {
+		select {
+		case e.requestQueue <- r:
+			// Request queued
+		default:
+			// Queue full, handle directly
+			e.router.ServeHTTP(w, r)
+		}
+		return
+	}
 	e.router.ServeHTTP(w, r)
 }
 
@@ -413,4 +430,24 @@ func (e *Engine) Router() *router.Router {
 		e.router = router.New()
 	}
 	return e.router
+}
+
+func (e *Engine) enableProfiling() {
+	// Add pprof endpoints
+	e.router.GET("/debug/pprof/", wrapHandler(pprof.Handler("index")))
+	e.router.GET("/debug/pprof/heap", wrapHandler(pprof.Handler("heap")))
+	e.router.GET("/debug/pprof/goroutine", wrapHandler(pprof.Handler("goroutine")))
+	e.router.GET("/debug/pprof/block", wrapHandler(pprof.Handler("block")))
+	e.router.GET("/debug/pprof/threadcreate", wrapHandler(pprof.Handler("threadcreate")))
+	e.router.GET("/debug/pprof/cmdline", wrapHandler(pprof.Handler("cmdline")))
+	e.router.GET("/debug/pprof/profile", wrapHandler(pprof.Handler("profile")))
+	e.router.GET("/debug/pprof/symbol", wrapHandler(pprof.Handler("symbol")))
+	e.router.GET("/debug/pprof/trace", wrapHandler(pprof.Handler("trace")))
+}
+
+func wrapHandler(h http.Handler) router.HandlerFunc {
+	return func(c *router.Context) error {
+		h.ServeHTTP(c.Response, c.Request)
+		return nil
+	}
 }

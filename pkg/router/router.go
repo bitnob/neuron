@@ -1,8 +1,8 @@
 package router
 
 import (
-	"fmt"
 	"net/http"
+	"neuron/pkg/logger"
 	"sync"
 )
 
@@ -27,81 +27,49 @@ type Router struct {
 	middleware  []MiddlewareFunc
 	groups      []*RouteGroup
 	notFound    http.HandlerFunc
-	pool        sync.Pool
 	contextPool sync.Pool
+	paramPool   sync.Pool
+	routeTrie   *node
+	Logger      *logger.Logger
 }
 
 // ServeHTTP implements the http.Handler interface
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// Debug logging
-	fmt.Printf("Handling request: %s %s\n", req.Method, req.URL.Path)
-	fmt.Printf("Available routes: %+v\n", r.routes)
+	// Get context from pool - zero allocation path
+	ctx := r.contextPool.Get().(*Context)
+	ctx.Reset(w, req)
+	defer r.contextPool.Put(ctx)
 
-	// Get a context from the pool
-	c := r.pool.Get().(*Context)
-	c.Reset(w, req)
-
-	// Find and execute the matching route
-	found := false
-	for _, route := range r.routes[req.Method] {
-		fmt.Printf("Checking route: %s %s\n", route.Method, route.Path)
-		if params, ok := route.match(req.URL.Path); ok {
-			c.Params = params
-			found = true
-
-			// Build middleware chain
-			handler := route.Handler
-			for i := len(r.middleware) - 1; i >= 0; i-- {
-				handler = r.middleware[i](handler)
-			}
-
-			// Execute the handler
-			if err := handler(c); err != nil {
-				// TODO: Implement error handling
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			break
+	// Fast path for static routes - no allocations
+	if handler, params := r.routeTrie.find(req.Method, req.URL.Path); handler != nil {
+		ctx.Params = params
+		if err := handler.(HandlerFunc)(ctx); err != nil {
+			r.Logger.Error("Handler error: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
+		return
 	}
 
-	// Handle 404 Not Found
-	if !found {
-		if r.notFound != nil {
-			r.notFound(w, req)
-		} else {
-			http.NotFound(w, req)
-		}
-	}
-
-	// Put the context back in the pool
-	r.pool.Put(c)
+	r.Logger.Error("No route found for %s %s", req.Method, req.URL.Path)
+	http.NotFound(w, req)
 }
 
 // Handle registers a new route
 func (r *Router) Handle(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc) {
-	if r == nil {
-		r = New()
-	}
 	if r.routes == nil {
-		r.routes = make(map[string][]Route)
+		r.routes = make(map[string][]Route, 32)
 	}
 
-	route := Route{
+	// Pre-compile route into trie for O(1) lookup
+	r.routeTrie.insert(method, path, handler)
+
+	// Store route info for debugging/introspection
+	r.routes[method] = append(r.routes[method], Route{
 		Method:     method,
 		Path:       path,
 		Handler:    handler,
 		Middleware: middleware,
-	}
-
-	// Add route matching function
-	route.match = func(reqPath string) ([]Param, bool) {
-		if reqPath == path {
-			return nil, true
-		}
-		return nil, false
-	}
-
-	r.routes[method] = append(r.routes[method], route)
+	})
 }
 
 // Use adds middleware to the router
@@ -120,22 +88,25 @@ func (r *Router) Use(middleware ...MiddlewareFunc) {
 // New creates a new router instance
 func New() *Router {
 	r := &Router{
-		routes:     make(map[string][]Route),
-		middleware: make([]MiddlewareFunc, 0),
-		groups:     make([]*RouteGroup, 0),
-	}
-
-	r.pool = sync.Pool{
-		New: func() interface{} {
-			return &Context{
-				store: make(map[string]interface{}),
-			}
-		},
+		routes:     make(map[string][]Route, 32),
+		middleware: make([]MiddlewareFunc, 0, 8),
+		groups:     make([]*RouteGroup, 0, 8),
+		routeTrie:  &node{children: make([]*node, 0, 8)},
+		Logger:     logger.New(),
 	}
 
 	r.contextPool = sync.Pool{
 		New: func() interface{} {
-			return make(map[string]interface{})
+			return &Context{
+				store:  make(map[string]interface{}, 8),
+				Params: make([]Param, 0, 8),
+			}
+		},
+	}
+
+	r.paramPool = sync.Pool{
+		New: func() interface{} {
+			return make([]Param, 0, 8)
 		},
 	}
 
@@ -154,9 +125,13 @@ type Context struct {
 func (c *Context) Reset(w http.ResponseWriter, r *http.Request) {
 	c.Request = r
 	c.Response = w
-	c.Params = c.Params[:0]
-	for k := range c.store {
-		delete(c.store, k)
+	// Just create new map - faster than clearing
+	c.store = make(map[string]interface{}, 8)
+	// Reuse param slice
+	if cap(c.Params) > 32 {
+		c.Params = c.Params[:0]
+	} else {
+		c.Params = make([]Param, 0, 8)
 	}
 }
 
