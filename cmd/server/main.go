@@ -8,10 +8,9 @@ import (
 	"runtime/debug"
 	"syscall"
 
+	"neuron/pkg/logger"
 	"neuron/pkg/router"
 	"neuron/pkg/server"
-
-	"github.com/valyala/fasthttp"
 )
 
 func init() {
@@ -25,44 +24,44 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// todo: fasthttp is more trouble than it's worth, honestly
-	// net/http is plenty fast and well optimized
-	r := router.NewFastRouter()
+	// Create router
+	r := router.New()
+
+	// Ensure logger is initialized
+	if r.Logger == nil {
+		r.Logger = logger.New()
+	}
+
+	// Log server startup
+	r.Logger.Info("Starting server...")
 
 	// Configure routes
 	setupRoutes(r)
 
 	// Create optimized server
-	srv := server.NewFastServer(r.Handler(), r.Logger)
+	srv, ln := server.NewServer(r, r.Logger)
 
 	// Start server in goroutine
 	go func() {
-		// todo: this fatal here will only kill the goroutine and not propagate
-		// to the main routine which means the server will be alive but not be
-		// able to receive any http requests. ideally we want to capture this
-		// error here and use a channel to send it back to the main routine
-		if err := srv.ListenAndServe(":8080"); err != nil {
+		r.Logger.Info("Server listening on :8080")
+		if err := srv.Serve(ln); err != nil {
 			log.Printf("Server error: %v", err)
 		}
 	}()
 
-	// now we can use a select {} here to listen for both the error channel and
-	// context.Done(), that way which ever one happens first will trigger the
-	// shutdown happy path
+	// Wait for interrupt signal
 	<-ctx.Done()
 
 	// Shutdown server gracefully
 	log.Println("Shutting down server...")
-	if err := srv.Shutdown(); err != nil {
+	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Printf("Server shutdown error: %v", err)
 	}
 }
 
 // setupRoutes configures the API routes
-func setupRoutes(r *router.FastRouter) {
-	r.GET("/", func(c *router.FastContext) error {
-		c.RequestCtx.SetStatusCode(fasthttp.StatusOK)
-		c.RequestCtx.SetBodyString("Hello World!")
-		return nil
+func setupRoutes(r *router.Router) {
+	r.GET("/", func(c *router.Context) error {
+		return c.String(200, "Hello World!")
 	})
 }
